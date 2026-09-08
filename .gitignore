@@ -1,0 +1,9 @@
+kitchen.mp4
+*.mp4
+venv/
+.venv/
+__pycache__/
+runs/
+*.pt
+*.onnx
+.env

@@ -1,0 +1,32 @@
+class_id,object_class
+0,person
+1,bicycle
+15,cat
+16,dog
+28,suitcase
+39,bottle
+40,wine glass
+41,cup
+43,knife
+44,spoon
+45,bowl
+47,apple
+49,orange
+54,donut
+55,cake
+56,chair
+58,potted plant
+60,dining table
+61,toilet
+62,tv
+63,laptop
+64,mouse
+65,remote
+67,cell phone
+68,microwave
+69,oven
+70,toaster
+71,sink
+72,refrigerator
+75,vase
+79,toothbrush
