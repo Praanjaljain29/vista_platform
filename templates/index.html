@@ -1,0 +1,395 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        Hybrid VISTA — Simple Demo
+    </title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            color: #222;
+        }
+
+        .wrap {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow:
+                0 8px 25px rgba(0,0,0,.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin: 14px 0 6px;
+            font-weight: 600;
+        }
+
+        input[type=file],
+        input[type=text] {
+
+            width: 100%;
+
+            box-sizing: border-box;
+
+            padding: 12px;
+
+            border:
+                1px solid #d5d9e2;
+
+            border-radius: 10px;
+        }
+
+        button {
+
+            margin-top: 18px;
+
+            padding:
+                12px 20px;
+
+            border: 0;
+
+            border-radius: 10px;
+
+            cursor: pointer;
+
+            background: #222;
+
+            color: white;
+        }
+
+        .error {
+
+            background: #ffe7e7;
+
+            color: #a00;
+
+            padding: 12px;
+
+            border-radius: 10px;
+        }
+
+        .grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 16px;
+        }
+
+        .result-img {
+
+            width: 100%;
+
+            max-height: 300px;
+
+            object-fit: contain;
+
+            background: #eef1f6;
+
+            border-radius: 12px;
+        }
+
+        .muted {
+
+            color: #666;
+
+            font-size: 14px;
+        }
+
+        .stats {
+
+            display: flex;
+
+            gap: 18px;
+
+            flex-wrap: wrap;
+
+            margin-top: 14px;
+        }
+
+        .stat {
+
+            background: #f1f3f8;
+
+            padding: 10px 14px;
+
+            border-radius: 10px;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        @media (max-width:700px) {
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="wrap">
+
+    <!-- ========================= -->
+    <!-- UPLOAD CARD -->
+    <!-- ========================= -->
+
+    <div class="card">
+
+        <h1>
+            Hybrid VISTA — Simple Demo
+        </h1>
+
+        <p class="muted">
+
+            Upload a video and enter an
+            object class such as
+            <b>person</b>,
+            <b>car</b>,
+            or
+            <b>dog</b>.
+
+        </p>
+
+
+        {% if error %}
+
+            <div class="error">
+                {{ error }}
+            </div>
+
+        {% endif %}
+
+
+        <form
+            action="/process"
+            method="post"
+            enctype="multipart/form-data"
+        >
+
+            <label for="video">
+                Video
+            </label>
+
+            <input
+                id="video"
+                type="file"
+                name="video"
+                accept="video/*"
+                required
+            >
+
+
+            <label for="query">
+
+                What do you want to find?
+
+            </label>
+
+            <input
+                id="query"
+                type="text"
+                name="query"
+                placeholder="e.g. person"
+                value="{{ query|default('') }}"
+                required
+            >
+
+
+            <button
+                type="submit"
+            >
+                Process Video
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- RESULTS -->
+    <!-- ========================= -->
+
+    {% if result %}
+
+    <div class="card">
+
+        <h2>
+            Top 2 Matches
+        </h2>
+
+
+        {% if result.images %}
+
+        <div class="grid">
+
+            {% for image in result.images %}
+
+            <div>
+
+                <img
+                    class="result-img"
+                    src="{{
+                        url_for(
+                            'result_file',
+                            filename=image.filename
+                        )
+                    }}"
+                    alt="Top match"
+                >
+
+                <p>
+                    <b>Frame:</b>
+                    {{ image.frame_no }}
+                </p>
+
+                <p>
+                    <b>Class:</b>
+                    {{ image.class_name }}
+                </p>
+
+                <p>
+                    <b>Confidence:</b>
+                    {{ image.confidence }}
+                </p>
+
+                <p>
+                    <b>Track ID:</b>
+                    {{ image.track_id }}
+                </p>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+            <p>
+                No matching objects were found.
+            </p>
+
+        {% endif %}
+
+
+        <!-- ========================= -->
+        <!-- STATISTICS -->
+        <!-- ========================= -->
+
+        <div class="stats">
+
+            <div class="stat">
+
+                Frames:
+                {{ result.frames_processed }}
+
+            </div>
+
+            <div class="stat">
+
+                Detections:
+                {{ result.detections }}
+
+            </div>
+
+            <div class="stat">
+
+                Unique classes:
+                {{ result.unique_classes }}
+
+            </div>
+
+            <div class="stat">
+
+                Time:
+                {{ result.time_minutes }}
+                min
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================= -->
+        <!-- DOWNLOADS -->
+        <!-- ========================= -->
+
+        <p style="margin-top:18px">
+
+            <a
+                href="{{
+                    url_for(
+                        'download_file',
+                        filename=result.detections_csv
+                    )
+                }}"
+            >
+
+                Download detections CSV
+
+            </a>
+
+
+            &nbsp; | &nbsp;
+
+
+            <a
+                href="{{
+                    url_for(
+                        'download_file',
+                        filename=result.classes_csv
+                    )
+                }}"
+            >
+
+                Download classes CSV
+
+            </a>
+
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>
