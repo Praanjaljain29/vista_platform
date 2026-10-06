@@ -1,395 +1,585 @@
 <!doctype html>
-
 <html lang="en">
-
 <head>
-
     <meta charset="utf-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
-
-    <title>
-        Hybrid VISTA — Simple Demo
-    </title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VISTA Local Llama Studio</title>
     <style>
+        :root {
+            color-scheme: light;
+            --bg: #07111d;
+            --bg-2: #0d1b2a;
+            --panel: rgba(10, 22, 36, 0.82);
+            --panel-2: rgba(18, 30, 44, 0.94);
+            --line: rgba(173, 189, 206, 0.18);
+            --text: #e8eef5;
+            --muted: #9eb0c4;
+            --accent: #61d9c5;
+            --accent-2: #f4b860;
+            --danger: #ff7f7f;
+            --success: #4fe08f;
+            --shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+        }
+
+        * { box-sizing: border-box; }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fb;
             margin: 0;
-            color: #222;
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(97, 217, 197, 0.14), transparent 28%),
+                radial-gradient(circle at top right, rgba(244, 184, 96, 0.16), transparent 25%),
+                linear-gradient(160deg, #050b12 0%, #09141f 52%, #0b1723 100%);
+            color: var(--text);
+            min-height: 100vh;
         }
 
-        .wrap {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
+        .page {
+            width: min(1440px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 40px;
         }
 
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow:
-                0 8px 25px rgba(0,0,0,.08);
+        .hero {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .brand,
+        .status-card,
+        .panel,
+        .message,
+        .form-card,
+        .empty-state {
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(16, 28, 42, 0.93), rgba(8, 16, 24, 0.90));
+            box-shadow: var(--shadow);
+            border-radius: 22px;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand::after {
+            content: "";
+            position: absolute;
+            inset: auto -8% -20% auto;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(97, 217, 197, 0.16) 0%, rgba(97, 217, 197, 0.04) 46%, transparent 72%);
+            pointer-events: none;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(97, 217, 197, 0.12);
+            color: var(--accent);
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         h1 {
-            margin-top: 0;
+            margin: 16px 0 12px;
+            font-size: clamp(34px, 5vw, 56px);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+        }
+
+        .subtitle {
+            max-width: 70ch;
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .tag {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            background: rgba(255, 255, 255, 0.04);
+            color: #dce6ef;
+            font-size: 13px;
+        }
+
+        .status-card {
+            padding: 22px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .status-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .status-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .pill.success { background: rgba(79, 224, 143, 0.13); color: var(--success); }
+        .pill.warning { background: rgba(244, 184, 96, 0.14); color: var(--accent-2); }
+        .pill.error { background: rgba(255, 127, 127, 0.14); color: var(--danger); }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+            gap: 18px;
+        }
+
+        .form-card,
+        .panel,
+        .empty-state {
+            padding: 22px;
+        }
+
+        .section-title {
+            margin: 0 0 10px;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        .muted {
+            color: var(--muted);
         }
 
         label {
             display: block;
-            margin: 14px 0 6px;
-            font-weight: 600;
+            margin: 16px 0 8px;
+            font-size: 13px;
+            color: #d6e1eb;
+            letter-spacing: 0.02em;
         }
 
-        input[type=file],
-        input[type=text] {
-
+        input[type="file"],
+        textarea,
+        input[type="text"] {
             width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 14px 15px;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+            outline: none;
+        }
 
-            box-sizing: border-box;
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
 
-            padding: 12px;
+        input[type="file"]::file-selector-button {
+            margin-right: 12px;
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 12px;
+            background: rgba(97, 217, 197, 0.16);
+            color: var(--text);
+            cursor: pointer;
+        }
 
-            border:
-                1px solid #d5d9e2;
+        input:focus,
+        textarea:focus {
+            border-color: rgba(97, 217, 197, 0.55);
+            box-shadow: 0 0 0 3px rgba(97, 217, 197, 0.12);
+        }
 
-            border-radius: 10px;
+        .help {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
         }
 
         button {
-
-            margin-top: 18px;
-
-            padding:
-                12px 20px;
-
             border: 0;
-
-            border-radius: 10px;
-
+            border-radius: 16px;
+            padding: 13px 16px;
+            background: linear-gradient(135deg, #61d9c5, #3ba7ff);
+            color: #04111b;
+            font-weight: 700;
             cursor: pointer;
+            box-shadow: 0 14px 30px rgba(59, 167, 255, 0.18);
+        }
 
-            background: #222;
-
-            color: white;
+        .ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: none;
         }
 
         .error {
-
-            background: #ffe7e7;
-
-            color: #a00;
-
-            padding: 12px;
-
-            border-radius: 10px;
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 127, 127, 0.12);
+            border: 1px solid rgba(255, 127, 127, 0.25);
+            color: #ffd1d1;
         }
 
-        .grid {
-
+        .messages {
             display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 16px;
+            gap: 12px;
         }
 
-        .result-img {
-
-            width: 100%;
-
-            max-height: 300px;
-
-            object-fit: contain;
-
-            background: #eef1f6;
-
-            border-radius: 12px;
+        .message {
+            padding: 16px;
         }
 
-        .muted {
-
-            color: #666;
-
-            font-size: 14px;
+        .message.user {
+            background: linear-gradient(180deg, rgba(55, 83, 103, 0.85), rgba(12, 22, 32, 0.9));
         }
 
-        .stats {
+        .message.assistant {
+            background: linear-gradient(180deg, rgba(24, 42, 54, 0.96), rgba(11, 21, 30, 0.92));
+        }
 
+        .message-header {
             display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
 
+        .message-text {
+            margin: 0;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 18px;
+            margin-top: 18px;
+        }
 
+        .evidence-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .kv {
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .kv .label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .kv .value {
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .results-cards {
+            display: grid;
+            gap: 14px;
+        }
+
+        .image-card {
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .image-card img {
+            display: block;
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            background: #0b1118;
+        }
+
+        .image-meta {
+            padding: 12px 14px 14px;
+            display: grid;
+            gap: 4px;
+            color: #dce6ef;
+            font-size: 13px;
+        }
+
+        pre.json {
+            margin: 0;
+            padding: 16px;
+            overflow: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(2, 7, 14, 0.85);
+            color: #cbe3ff;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .footer-links {
+            margin-top: 16px;
+            display: flex;
             flex-wrap: wrap;
-
-            margin-top: 14px;
+            gap: 14px;
+            color: var(--muted);
         }
 
-        .stat {
-
-            background: #f1f3f8;
-
-            padding: 10px 14px;
-
-            border-radius: 10px;
-        }
-
-        a {
+        .footer-links a {
+            color: var(--accent);
             text-decoration: none;
         }
 
-        @media (max-width:700px) {
-
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
+        .small-note {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
         }
 
+        @media (max-width: 1120px) {
+            .hero,
+            .workspace,
+            .results-grid,
+            .evidence-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page { width: min(100% - 18px, 1440px); padding-top: 18px; }
+            .brand, .status-card, .form-card, .panel, .empty-state { padding: 18px; border-radius: 18px; }
+            h1 { font-size: 30px; }
+            .image-card img { height: 210px; }
+        }
     </style>
-
 </head>
-
-
 <body>
-
-<div class="wrap">
-
-    <!-- ========================= -->
-    <!-- UPLOAD CARD -->
-    <!-- ========================= -->
-
-    <div class="card">
-
-        <h1>
-            Hybrid VISTA — Simple Demo
-        </h1>
-
-        <p class="muted">
-
-            Upload a video and enter an
-            object class such as
-            <b>person</b>,
-            <b>car</b>,
-            or
-            <b>dog</b>.
-
-        </p>
-
-
-        {% if error %}
-
-            <div class="error">
-                {{ error }}
+<div class="page">
+    <section class="hero">
+        <div class="brand">
+            <span class="eyebrow">VISTA local Llama architecture</span>
+            <h1>Upload a video, ask in natural language, and route the answer through local GGUF Llama.</h1>
+            <p class="subtitle">
+                The upload and YOLO26 + ByteTrack pipeline stays intact. The new layers separate query parsing,
+                visual search, and response generation so the system can run locally once the GGUF model is available.
+            </p>
+            <div class="tag-row">
+                <span class="tag">YOLO26 + ByteTrack preserved</span>
+                <span class="tag">Local llama.cpp only</span>
+                <span class="tag">Mock mode for UI testing</span>
+                <span class="tag">Structured evidence output</span>
             </div>
+        </div>
 
-        {% endif %}
+        <div class="status-card">
+            <div>
+                <div class="status-label">Llama runtime</div>
+                {% if runtime_status.available %}
+                    <div class="pill success">Available: {{ runtime_status.mode }}</div>
+                {% elif runtime_status.mode == 'missing' %}
+                    <div class="pill warning">{{ runtime_status.mode }}</div>
+                {% else %}
+                    <div class="pill error">{{ runtime_status.mode }}</div>
+                {% endif %}
+                <div class="status-value">{{ runtime_status.message }}</div>
+            </div>
+            <div class="small-note">
+                Set <strong>VISTA_DEV_MOCK_LLM=1</strong> only for interface testing. Production mode requires the
+                local GGUF path via <strong>VISTA_LLM_MODEL_PATH</strong>.
+            </div>
+        </div>
+    </section>
 
+    <section class="workspace">
+        <div class="form-card">
+            <h2 class="section-title">Upload and query</h2>
+            <p class="muted">Submit one video and one natural-language query. The backend will parse intent, search detections, and prepare a local response.</p>
 
-        <form
-            action="/process"
-            method="post"
-            enctype="multipart/form-data"
-        >
+            {% if error %}
+                <div class="error">{{ error }}</div>
+            {% endif %}
 
-            <label for="video">
-                Video
-            </label>
+            <form action="/process" method="post" enctype="multipart/form-data">
+                <label for="video">Video upload</label>
+                <input id="video" type="file" name="video" accept="video/*" required>
+                <div class="help">Supported formats: MP4, AVI, MOV, MKV, WEBM. Existing upload processing still saves detections CSV and class CSV output.</div>
 
-            <input
-                id="video"
-                type="file"
-                name="video"
-                accept="video/*"
-                required
-            >
+                <label for="query">Natural-language query</label>
+                <textarea id="query" name="query" placeholder="Find the person near the car." required>{{ query|default('') }}</textarea>
+                <div class="help">The parser targets JSON intent fields like <strong>target_object</strong>, <strong>related_object</strong>, and <strong>relation</strong>.</div>
 
+                <div class="button-row">
+                    <button type="submit">Run local search</button>
+                    <button class="ghost" type="reset">Clear</button>
+                </div>
+            </form>
+        </div>
 
-            <label for="query">
+        <div class="panel">
+            <h2 class="section-title">Conversation</h2>
+            <p class="muted">This is a server-rendered conversation view for the current request. It becomes interactive once the browser-side API layer is added.</p>
 
-                What do you want to find?
-
-            </label>
-
-            <input
-                id="query"
-                type="text"
-                name="query"
-                placeholder="e.g. person"
-                value="{{ query|default('') }}"
-                required
-            >
-
-
-            <button
-                type="submit"
-            >
-                Process Video
-            </button>
-
-        </form>
-
-    </div>
-
-
-    <!-- ========================= -->
-    <!-- RESULTS -->
-    <!-- ========================= -->
+            {% if result and result.conversation %}
+                <div class="messages">
+                    {% for item in result.conversation %}
+                        <div class="message {{ item.role }}">
+                            <div class="message-header">
+                                <span>{{ item.role }}</span>
+                                {% if item.role == 'assistant' and result.assistant_mode %}
+                                    <span>{{ result.assistant_mode }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="message-text">{{ item.text }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="muted">No conversation yet.</div>
+                    <div class="small-note">Submit a query to see the user request, status updates, and the local assistant response in this panel.</div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
 
     {% if result %}
+        <section class="results-grid">
+            <div class="panel">
+                <h2 class="section-title">Result panel</h2>
+                <p class="muted">The response is built from the search pipeline. In production mode, Llama receives only structured evidence and does not invent track data.</p>
 
-    <div class="card">
+                <div class="evidence-grid">
+                    <div class="kv"><span class="label">Found</span><span class="value">{{ result.search_result.found }}</span></div>
+                    <div class="kv"><span class="label">Object class</span><span class="value">{{ result.search_result.evidence.object_class or 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">Track ID</span><span class="value">{{ result.search_result.evidence.track_id if result.search_result.evidence.track_id is not none else 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">Confidence</span><span class="value">{{ result.search_result.evidence.confidence if result.search_result.evidence.confidence is not none else 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">First timestamp</span><span class="value">{{ result.search_result.evidence.first_timestamp if result.search_result.evidence.first_timestamp is not none else 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">Last timestamp</span><span class="value">{{ result.search_result.evidence.last_timestamp if result.search_result.evidence.last_timestamp is not none else 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">Best frame</span><span class="value">{{ result.search_result.evidence.best_frame if result.search_result.evidence.best_frame is not none else 'n/a' }}</span></div>
+                    <div class="kv"><span class="label">Related object</span><span class="value">{{ result.search_result.evidence.related_object or 'n/a' }}</span></div>
+                </div>
 
-        <h2>
-            Top 2 Matches
-        </h2>
+                <div style="margin-top: 14px;" class="small-note">
+                    Relation: {{ result.search_result.evidence.relation or 'n/a' }} | Match score: {{ result.search_result.evidence.match_score if result.search_result.evidence.match_score is not none else 'n/a' }} | Candidate detections: {{ result.search_result.candidate_count }}
+                </div>
 
+                <div style="margin-top: 18px;">
+                    <div class="status-label">Parsed intent</div>
+                    <pre class="json">{{ result.intent | tojson(indent=2) }}</pre>
+                </div>
 
-        {% if result.images %}
-
-        <div class="grid">
-
-            {% for image in result.images %}
-
-            <div>
-
-                <img
-                    class="result-img"
-                    src="{{
-                        url_for(
-                            'result_file',
-                            filename=image.filename
-                        )
-                    }}"
-                    alt="Top match"
-                >
-
-                <p>
-                    <b>Frame:</b>
-                    {{ image.frame_no }}
-                </p>
-
-                <p>
-                    <b>Class:</b>
-                    {{ image.class_name }}
-                </p>
-
-                <p>
-                    <b>Confidence:</b>
-                    {{ image.confidence }}
-                </p>
-
-                <p>
-                    <b>Track ID:</b>
-                    {{ image.track_id }}
-                </p>
-
+                <div style="margin-top: 14px;">
+                    <div class="status-label">Parser status</div>
+                    <pre class="json">{{ result.parse_result | tojson(indent=2) }}</pre>
+                </div>
             </div>
 
-            {% endfor %}
+            <div class="panel">
+                <h2 class="section-title">Visual results</h2>
+                <p class="muted">These crops come from the actual YOLO26 + ByteTrack detections and are not fabricated by the LLM.</p>
 
-        </div>
+                {% if result.images %}
+                    <div class="results-cards">
+                        {% for image in result.images %}
+                            <div class="image-card">
+                                <img src="{{ url_for('result_file', filename=image.filename) }}" alt="Matched crop">
+                                <div class="image-meta">
+                                    <span><strong>Class:</strong> {{ image.class_name }}</span>
+                                    <span><strong>Track:</strong> {{ image.track_id }}</span>
+                                    <span><strong>Frame:</strong> {{ image.frame_no }}</span>
+                                    <span><strong>Confidence:</strong> {{ image.confidence }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="muted">No crops to display.</div>
+                        <div class="small-note">This usually means the parser did not produce a target object yet or the model is still unavailable. Enable mock mode to test the UI flow before the GGUF download completes.</div>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
 
-        {% else %}
-
-            <p>
-                No matching objects were found.
-            </p>
-
-        {% endif %}
-
-
-        <!-- ========================= -->
-        <!-- STATISTICS -->
-        <!-- ========================= -->
-
-        <div class="stats">
-
-            <div class="stat">
-
-                Frames:
-                {{ result.frames_processed }}
-
+        <section class="results-grid">
+            <div class="panel">
+                <h2 class="section-title">Structured evidence</h2>
+                <p class="muted">The response layer reads only this structured evidence. It can be expanded later for motion, events, and relationship queries.</p>
+                <pre class="json">{{ result.search_result | tojson(indent=2) }}</pre>
             </div>
 
-            <div class="stat">
-
-                Detections:
-                {{ result.detections }}
-
+            <div class="panel">
+                <h2 class="section-title">Processing stats</h2>
+                <div class="evidence-grid">
+                    <div class="kv"><span class="label">Frames processed</span><span class="value">{{ result.frames_processed }}</span></div>
+                    <div class="kv"><span class="label">Detections</span><span class="value">{{ result.detections }}</span></div>
+                    <div class="kv"><span class="label">Unique classes</span><span class="value">{{ result.unique_classes }}</span></div>
+                    <div class="kv"><span class="label">Time</span><span class="value">{{ result.time_minutes }} min</span></div>
+                </div>
+                <div class="footer-links">
+                    <a href="{{ url_for('download_file', filename=result.detections_csv) }}">Download detections CSV</a>
+                    <a href="{{ url_for('download_file', filename=result.classes_csv) }}">Download classes CSV</a>
+                </div>
+                <div class="small-note" style="margin-top: 12px;">
+                    Assistant mode: {{ result.assistant_mode }}{% if result.assistant_error %} | {{ result.assistant_error }}{% endif %}
+                </div>
             </div>
-
-            <div class="stat">
-
-                Unique classes:
-                {{ result.unique_classes }}
-
-            </div>
-
-            <div class="stat">
-
-                Time:
-                {{ result.time_minutes }}
-                min
-
-            </div>
-
-        </div>
-
-
-        <!-- ========================= -->
-        <!-- DOWNLOADS -->
-        <!-- ========================= -->
-
-        <p style="margin-top:18px">
-
-            <a
-                href="{{
-                    url_for(
-                        'download_file',
-                        filename=result.detections_csv
-                    )
-                }}"
-            >
-
-                Download detections CSV
-
-            </a>
-
-
-            &nbsp; | &nbsp;
-
-
-            <a
-                href="{{
-                    url_for(
-                        'download_file',
-                        filename=result.classes_csv
-                    )
-                }}"
-            >
-
-                Download classes CSV
-
-            </a>
-
-        </p>
-
-    </div>
-
+        </section>
     {% endif %}
-
 </div>
-
 </body>
-
 </html>
