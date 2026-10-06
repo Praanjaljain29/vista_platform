@@ -1,0 +1,23 @@
+{
+  "project_type": "Flask web application, single-file server-rendered, local GGUF Llama inference",
+  "language": "Python 3 (no version floor specified; assume 3.9+ safe patterns)",
+  "build_system": "No build step. App runs with `python app.py` or `flask run`. No compile step.",
+  "test_framework": "No test framework configured. Verification uses `python -c` import checks and Flask test client assertions.",
+  "build_command": "N/A — no build step",
+  "test_command": "python -c \"import ast; [print(f, 'ok') or ast.parse(open(f).read()) for f in ['app.py','llama_service.py','query_parser.py','search_service.py','response_service.py','class_mapper.py']]\" && python -c \"from app import app; print('Flask app imports ok')\"",
+  "verification_instructions": "1. Run the AST parse check for all Python files. 2. Run the Flask app import check. 3. Optionally run Flask test client assertions on / and /debug routes.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "Do NOT add vLLM, VLMs, or new dependencies. Do NOT change requirements.txt. Do NOT modify yolo26n.pt. Do NOT commit or push. Mock mode works via VISTA_DEV_MOCK_LLM=1 env var. Model path override via VISTA_LLM_MODEL_PATH.",
+  "contribution_requirements": "Keep mock mode working. Keep llama-cpp-python singleton pattern in llama_service.py. Keep CSV generation and crop saving intact. Keep YOLO26+ByteTrack pipeline unchanged.",
+  "key_patterns": "All dataclasses use `from __future__ import annotations` and `@dataclass` (NO slots=True on classes that use field(default_factory=...)). Module-level singletons (_SERVICE_SINGLETON in llama_service.py). Flask routes render templates directly — no session, no DB. Jinja2 templates are standalone HTML with inline <style> blocks (no template inheritance). The `_normalize()` helper in search_service.py lowercases and strips strings.",
+  "relevant_files": [
+    "app.py",
+    "query_parser.py",
+    "search_service.py",
+    "response_service.py",
+    "llama_service.py",
+    "templates/index.html",
+    "requirements.txt"
+  ],
+  "directory_structure": "Root: app.py (Flask), llama_service.py, query_parser.py, search_service.py, response_service.py, main.py (standalone CLI), requirements.txt, yolo26n.pt. templates/: index.html (only template). uploads/: saved video files. results/: detection CSVs, crop JPEGs. models/: GGUF model file location. .agents/tasks/: plan artifacts."
+}
