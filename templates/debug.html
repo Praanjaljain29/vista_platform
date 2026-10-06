@@ -1,177 +1,488 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VISTA — Debug</title>
-<style>
-  :root {
-    --bg: #0f1117;
-    --bg-2: #161b27;
-    --panel: #1e2535;
-    --accent: #4f9eff;
-    --text: #e0e6f0;
-    --muted: #7a8ba8;
-    --danger: #e05c5c;
-    --success: #4fc98e;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 2rem; }
-  h1 { color: var(--accent); margin-bottom: 0.5rem; }
-  h2 { color: var(--accent); margin: 1.5rem 0 0.5rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
-  a { color: var(--accent); }
-  .back { display: inline-block; margin-bottom: 1.5rem; font-size: 0.9rem; }
-  .card { background: var(--panel); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
-  .kv { display: grid; grid-template-columns: 180px 1fr; gap: 0.3rem 1rem; font-size: 0.9rem; }
-  .kv dt { color: var(--muted); }
-  .kv dd { word-break: break-all; }
-  pre.json { background: var(--bg-2); border-radius: 6px; padding: 1rem; font-size: 0.82rem; overflow-x: auto; white-space: pre-wrap; color: var(--text); }
-  .notice { color: var(--muted); font-style: italic; }
-  .images-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; }
-  .images-grid figure { background: var(--bg-2); border-radius: 6px; padding: 0.5rem; max-width: 220px; }
-  .images-grid img { max-width: 100%; border-radius: 4px; }
-  .images-grid figcaption { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
-  .pill { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75rem; background: var(--bg-2); color: var(--accent); margin-right: 0.3rem; }
-  .pill-ok { background: #1a3d2b; color: var(--success); }
-  .pill-err { background: #3d1a1a; color: var(--danger); }
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VISTA — Debug &amp; Analytics</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #07111d;
+            --bg-2: #0d1b2a;
+            --panel: rgba(10, 22, 36, 0.82);
+            --panel-2: rgba(18, 30, 44, 0.94);
+            --line: rgba(173, 189, 206, 0.18);
+            --text: #e8eef5;
+            --muted: #9eb0c4;
+            --accent: #61d9c5;
+            --accent-2: #f4b860;
+            --danger: #ff7f7f;
+            --success: #4fe08f;
+            --shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(97, 217, 197, 0.14), transparent 28%),
+                radial-gradient(circle at top right, rgba(244, 184, 96, 0.16), transparent 25%),
+                linear-gradient(160deg, #050b12 0%, #09141f 52%, #0b1723 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .page {
+            width: min(1100px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 36px 0 60px;
+            display: grid;
+            gap: 20px;
+        }
+
+        /* ── Card base ── */
+        .card {
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(16, 28, 42, 0.93), rgba(8, 16, 24, 0.90));
+            box-shadow: var(--shadow);
+            border-radius: 22px;
+            backdrop-filter: blur(12px);
+            padding: 24px 26px;
+        }
+
+        /* ── Typography ── */
+        h1 {
+            margin: 0 0 6px;
+            font-size: clamp(28px, 5vw, 40px);
+            letter-spacing: -0.03em;
+        }
+
+        h2 {
+            margin: 0 0 14px;
+            font-size: 17px;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+
+        p { margin: 0 0 8px; line-height: 1.6; }
+
+        a.back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        a.back-link:hover { text-decoration: underline; }
+
+        /* ── Pills ── */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 7px 13px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .pill.success { background: rgba(79, 224, 143, 0.13); color: var(--success); }
+        .pill.warning { background: rgba(244, 184, 96, 0.14); color: var(--accent-2); }
+        .pill.error   { background: rgba(255, 127, 127, 0.14); color: var(--danger); }
+
+        /* ── Status card ── */
+        .status-card {
+            padding: 22px 26px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .status-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+
+        /* ── Key-value grid ── */
+        .evidence-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .kv {
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .kv .label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .kv .value {
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        /* ── Image cards ── */
+        .results-cards {
+            display: grid;
+            gap: 14px;
+        }
+
+        .image-card {
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .image-card img {
+            display: block;
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            background: #0b1118;
+        }
+
+        .image-meta {
+            padding: 12px 14px 14px;
+            display: grid;
+            gap: 4px;
+            color: #dce6ef;
+            font-size: 13px;
+        }
+
+        /* ── Code / JSON ── */
+        pre.json {
+            margin: 0;
+            padding: 16px;
+            overflow: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(2, 7, 14, 0.85);
+            color: #cbe3ff;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        pre.raw {
+            margin: 0;
+            padding: 16px;
+            overflow: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: rgba(2, 7, 14, 0.65);
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* ── Footer links ── */
+        .footer-links {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            color: var(--muted);
+        }
+
+        .footer-links a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer-links a:hover { text-decoration: underline; }
+
+        /* ── Notes ── */
+        .note-item {
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(244, 184, 96, 0.08);
+            border: 1px solid rgba(244, 184, 96, 0.18);
+            color: #f4dda8;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .empty-notice {
+            padding: 28px 22px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        /* ── Two-column layout for crops ── */
+        .crops-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        @media (max-width: 900px) {
+            .evidence-grid, .crops-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            .page { padding: 18px 0 40px; }
+            .card, .status-card { padding: 18px; border-radius: 18px; }
+            h1 { font-size: 26px; }
+        }
+    </style>
 </head>
 <body>
+<div class="page">
 
-<a class="back" href="/">← Back to VISTA</a>
-<h1>VISTA — Debug / Analytics</h1>
+    <!-- Back link -->
+    <div>
+        <a class="back-link" href="/">← Back to VISTA</a>
+    </div>
 
-{% if result is none %}
-  <p class="notice">No results yet — submit a query on the main page first.</p>
-{% else %}
+    <!-- Page title -->
+    <div class="card">
+        <h1>Debug &amp; Analytics</h1>
+        <p style="color: var(--muted); margin: 0;">Internal details for development and research. Not shown on the main page.</p>
+    </div>
 
-<!-- Runtime Status -->
-<h2>LLM Runtime</h2>
-<div class="card">
-  <dl class="kv">
-    <dt>Mode</dt><dd>{{ runtime_status.get('mode', '—') }}</dd>
-    <dt>Available</dt><dd>{{ runtime_status.get('available', '—') }}</dd>
-    <dt>Message</dt><dd>{{ runtime_status.get('message', '—') }}</dd>
-  </dl>
+    <!-- ── LLM Runtime status ── -->
+    <div class="card status-card">
+        <h2>LLM Runtime</h2>
+        <div>
+            <div class="status-label">Mode</div>
+            {% if runtime_status.available %}
+                <div class="pill success">{{ runtime_status.mode }}</div>
+            {% elif runtime_status.mode == 'missing' %}
+                <div class="pill warning">{{ runtime_status.mode }}</div>
+            {% else %}
+                <div class="pill error">{{ runtime_status.mode }}</div>
+            {% endif %}
+        </div>
+        <div>
+            <div class="status-label">Message</div>
+            <span style="font-size: 14px; color: var(--text);">{{ runtime_status.message }}</span>
+        </div>
+        <div>
+            <div class="status-label">Available</div>
+            {% if runtime_status.available %}
+                <span class="pill success">Yes</span>
+            {% else %}
+                <span class="pill error">No</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if result %}
+
+        <!-- ── Answer ── -->
+        <div class="card">
+            <h2>Assistant Answer</h2>
+            <div class="evidence-grid">
+                <div class="kv" style="grid-column: 1 / -1;">
+                    <span class="label">Message</span>
+                    <span class="value" style="white-space: pre-wrap; font-weight: 400;">{{ result.assistant_message or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Mode</span>
+                    <span class="value">{{ result.assistant_mode or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Error</span>
+                    <span class="value" style="color: var(--danger);">{{ result.assistant_error or 'none' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Processing stats ── -->
+        <div class="card">
+            <h2>Processing Stats</h2>
+            <div class="evidence-grid">
+                <div class="kv">
+                    <span class="label">Frames Processed</span>
+                    <span class="value">{{ result.frames_processed }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Detections</span>
+                    <span class="value">{{ result.detections }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Unique Classes</span>
+                    <span class="value">{{ result.unique_classes }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Time</span>
+                    <span class="value">{{ result.time_minutes }} min</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Parsed query intent ── -->
+        <div class="card">
+            <h2>Parsed Query Intent</h2>
+            <pre class="json">{{ result.intent | tojson(indent=2) }}</pre>
+        </div>
+
+        <!-- ── Parser status ── -->
+        <div class="card">
+            <h2>Parser Status</h2>
+            <pre class="json">{{ result.parse_result | tojson(indent=2) }}</pre>
+        </div>
+
+        <!-- ── Evidence summary ── -->
+        {% if result.search_result and result.search_result.evidence %}
+        <div class="card">
+            <h2>Evidence Summary</h2>
+            <div class="evidence-grid">
+                <div class="kv">
+                    <span class="label">Object Class</span>
+                    <span class="value">{{ result.search_result.evidence.object_class or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Track ID</span>
+                    <span class="value">{{ result.search_result.evidence.track_id if result.search_result.evidence.track_id is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">First Timestamp</span>
+                    <span class="value">{{ result.search_result.evidence.first_timestamp if result.search_result.evidence.first_timestamp is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Last Timestamp</span>
+                    <span class="value">{{ result.search_result.evidence.last_timestamp if result.search_result.evidence.last_timestamp is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Best Frame</span>
+                    <span class="value">{{ result.search_result.evidence.best_frame if result.search_result.evidence.best_frame is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Confidence</span>
+                    <span class="value">{{ result.search_result.evidence.confidence if result.search_result.evidence.confidence is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Bounding Box</span>
+                    <span class="value">{{ result.search_result.evidence.bbox or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Related Object</span>
+                    <span class="value">{{ result.search_result.evidence.related_object or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Related Track ID</span>
+                    <span class="value">{{ result.search_result.evidence.related_track_id if result.search_result.evidence.related_track_id is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Relation</span>
+                    <span class="value">{{ result.search_result.evidence.relation or 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Match Score</span>
+                    <span class="value">{{ result.search_result.evidence.match_score if result.search_result.evidence.match_score is not none else 'n/a' }}</span>
+                </div>
+                <div class="kv">
+                    <span class="label">Frames Seen</span>
+                    <span class="value">{{ result.search_result.evidence.frames_seen if result.search_result.evidence.frames_seen is not none else 'n/a' }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── Candidate count + notes ── -->
+        <div class="card">
+            <h2>Search Details</h2>
+            <div class="kv" style="margin-bottom: 14px;">
+                <span class="label">Candidate Count</span>
+                <span class="value">{{ result.search_result.candidate_count if result.search_result else 'n/a' }}</span>
+            </div>
+            {% if result.search_result and result.search_result.notes %}
+                <div style="display: grid; gap: 8px;">
+                    {% for note in result.search_result.notes %}
+                        <div class="note-item">{{ note }}</div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--muted); font-size: 13px;">No search notes.</p>
+            {% endif %}
+        </div>
+
+        <!-- ── Full structured evidence JSON ── -->
+        <div class="card">
+            <h2>Full Search Result (JSON)</h2>
+            <pre class="json">{{ result.search_result | tojson(indent=2) }}</pre>
+        </div>
+
+        <!-- ── Visual crops ── -->
+        {% if result.images %}
+        <div class="card">
+            <h2>Visual Crops</h2>
+            <div class="crops-grid">
+                {% for image in result.images %}
+                    <div class="image-card">
+                        <img src="{{ url_for('result_file', filename=image.filename) }}" alt="Crop for {{ image.class_name }}">
+                        <div class="image-meta">
+                            <span><strong>Class:</strong> {{ image.class_name }}</span>
+                            <span><strong>Track ID:</strong> {{ image.track_id }}</span>
+                            <span><strong>Frame:</strong> {{ image.frame_no }}</span>
+                            <span><strong>Confidence:</strong> {{ image.confidence }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── CSV download links ── -->
+        {% if result.detections_csv or result.classes_csv %}
+        <div class="card">
+            <h2>CSV Downloads</h2>
+            <div class="footer-links">
+                {% if result.detections_csv %}
+                    <a href="{{ url_for('download_file', filename=result.detections_csv) }}">Download detections CSV</a>
+                {% endif %}
+                {% if result.classes_csv %}
+                    <a href="{{ url_for('download_file', filename=result.classes_csv) }}">Download classes CSV</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── Raw LLM parser output ── -->
+        <div class="card">
+            <h2>Raw LLM Parser Output</h2>
+            <pre class="raw">{{ result.parse_result.raw_output if result.parse_result and result.parse_result.raw_output else 'No raw output.' }}</pre>
+        </div>
+
+    {% else %}
+
+        <!-- No results yet -->
+        <div class="card">
+            <div class="empty-notice">
+                No results yet — submit a query on the main page first.
+            </div>
+        </div>
+
+    {% endif %}
+
+    <!-- Footer -->
+    <div style="text-align: center; color: var(--muted); font-size: 13px;">
+        <a class="back-link" href="/">← Back to VISTA</a>
+    </div>
+
 </div>
-
-<!-- Answer -->
-<h2>Answer</h2>
-<div class="card">
-  <dl class="kv">
-    <dt>Message</dt><dd>{{ result.get('assistant_message', '—') }}</dd>
-    <dt>Mode</dt><dd>{{ result.get('assistant_mode', '—') }}</dd>
-    <dt>OK</dt><dd>{{ result.get('assistant_ok', '—') }}</dd>
-    <dt>Error</dt><dd>{{ result.get('assistant_error') or '—' }}</dd>
-  </dl>
-</div>
-
-<!-- Processing Stats -->
-<h2>Processing Stats</h2>
-<div class="card">
-  <dl class="kv">
-    <dt>Frames processed</dt><dd>{{ result.get('frames_processed', '—') }}</dd>
-    <dt>Detections</dt><dd>{{ result.get('detections', '—') }}</dd>
-    <dt>Unique classes</dt><dd>{{ result.get('unique_classes', '—') }}</dd>
-    <dt>Time (minutes)</dt><dd>{{ result.get('time_minutes', '—') }}</dd>
-  </dl>
-</div>
-
-<!-- Parsed Query Intent -->
-<h2>Parsed Query Intent</h2>
-<div class="card">
-  <pre class="json">{{ result.get('intent', {}) | tojson(indent=2) }}</pre>
-</div>
-
-<!-- Parser Status -->
-<h2>Parser Status</h2>
-<div class="card">
-  <pre class="json">{{ result.get('parse_result', {}) | tojson(indent=2) }}</pre>
-</div>
-
-<!-- Evidence Summary -->
-{% set sr = result.get('search_result', {}) %}
-{% set ev = sr.get('evidence', {}) %}
-<h2>Evidence Summary</h2>
-<div class="card">
-  <dl class="kv">
-    <dt>Found</dt><dd>{{ ev.get('found', '—') }}</dd>
-    <dt>Object class</dt><dd>{{ ev.get('object_class') or '—' }}</dd>
-    <dt>Track ID</dt><dd>{{ ev.get('track_id') if ev.get('track_id') is not none else '—' }}</dd>
-    <dt>First timestamp</dt><dd>{{ ev.get('first_timestamp') if ev.get('first_timestamp') is not none else '—' }}</dd>
-    <dt>Last timestamp</dt><dd>{{ ev.get('last_timestamp') if ev.get('last_timestamp') is not none else '—' }}</dd>
-    <dt>Best frame</dt><dd>{{ ev.get('best_frame') if ev.get('best_frame') is not none else '—' }}</dd>
-    <dt>Confidence</dt><dd>{{ ev.get('confidence') if ev.get('confidence') is not none else '—' }}</dd>
-    <dt>BBox</dt><dd>{{ ev.get('bbox') or '—' }}</dd>
-    <dt>Related object</dt><dd>{{ ev.get('related_object') or '—' }}</dd>
-    <dt>Related track ID</dt><dd>{{ ev.get('related_track_id') if ev.get('related_track_id') is not none else '—' }}</dd>
-    <dt>Relation</dt><dd>{{ ev.get('relation') or '—' }}</dd>
-    <dt>Match score</dt><dd>{{ ev.get('match_score') if ev.get('match_score') is not none else '—' }}</dd>
-    <dt>Frames seen</dt><dd>{{ ev.get('frames_seen', 0) }}</dd>
-  </dl>
-</div>
-
-<!-- Candidate count + Notes -->
-<h2>Search Summary</h2>
-<div class="card">
-  <dl class="kv">
-    <dt>Candidate count</dt><dd>{{ sr.get('candidate_count', 0) }}</dd>
-  </dl>
-  {% if sr.get('notes') %}
-  <ul style="margin-top:0.75rem; padding-left:1.2rem; font-size:0.9rem; color:var(--muted);">
-    {% for note in sr['notes'] %}<li>{{ note }}</li>{% endfor %}
-  </ul>
-  {% endif %}
-</div>
-
-<!-- Full search result JSON -->
-<h2>Structured Evidence (Full JSON)</h2>
-<div class="card">
-  <pre class="json">{{ sr | tojson(indent=2) }}</pre>
-</div>
-
-<!-- Visual Crops -->
-{% if result.get('images') %}
-<h2>Visual Crops</h2>
-<div class="card">
-  <div class="images-grid">
-    {% for img in result['images'] %}
-    <figure>
-      <img src="{{ url_for('result_file', filename=img.filename) }}" alt="{{ img.class_name }}">
-      <figcaption>
-        Class: {{ img.class_name }}<br>
-        Track ID: {{ img.track_id }}<br>
-        Frame: {{ img.frame_no }}<br>
-        Confidence: {{ img.confidence }}
-      </figcaption>
-    </figure>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<!-- CSV Downloads -->
-<h2>CSV Downloads</h2>
-<div class="card">
-  {% if result.get('detections_csv') %}
-  <p><a href="{{ url_for('download_file', filename=result['detections_csv']) }}">Download detections CSV</a></p>
-  {% endif %}
-  {% if result.get('classes_csv') %}
-  <p style="margin-top:0.4rem;"><a href="{{ url_for('download_file', filename=result['classes_csv']) }}">Download classes CSV</a></p>
-  {% endif %}
-  {% if not result.get('detections_csv') and not result.get('classes_csv') %}
-  <p class="notice">No CSV files available.</p>
-  {% endif %}
-</div>
-
-<!-- LLM Raw Parser Output -->
-{% if result.get('parse_result', {}).get('raw_output') %}
-<h2>LLM Raw Parser Output</h2>
-<div class="card">
-  <pre class="json">{{ result['parse_result']['raw_output'] }}</pre>
-</div>
-{% endif %}
-
-{% endif %}
 </body>
 </html>
