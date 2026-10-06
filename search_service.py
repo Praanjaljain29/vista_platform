@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from query_parser import SearchIntent
+from class_mapper import SemanticClassMapper
 
 
 @dataclass(slots=True)
@@ -90,26 +91,51 @@ def _bbox_from_record(record: DetectionRecord) -> dict[str, float]:
 
 
 class VisualSearchEngine:
-    def __init__(self, intent: SearchIntent, job_id: str, result_dir: str | Path) -> None:
+    def __init__(
+        self,
+        intent: SearchIntent,
+        job_id: str,
+        result_dir: str | Path,
+        available_classes: set[str] | None = None,
+    ) -> None:
         self.intent = intent
         self.job_id = job_id
         self.result_dir = Path(result_dir)
-        self.target_object = _normalize(intent.target_object)
-        self.related_object = _normalize(intent.related_object)
-        self.relation = _normalize(intent.relation)
+        self.available_classes: set[str] = available_classes or set()
+
+        # Resolve target classes via SemanticClassMapper
+        self.target_classes: list[str] = SemanticClassMapper.resolve(
+            intent.target.type, self.available_classes
+        )
+        if not self.target_classes and intent.target.type:
+            self.target_classes = [_normalize(intent.target.type)]
+
+        # Resolve related classes
+        related_type = intent.related_entities[0].type if intent.related_entities else None
+        self.related_classes: list[str] = SemanticClassMapper.resolve(
+            related_type, self.available_classes
+        )
+        if not self.related_classes and related_type:
+            self.related_classes = [_normalize(related_type)]
+
+        self.relation = _normalize(intent.relations[0].type if intent.relations else None)
+        self.unsupported_attributes: list[str] = intent.unsupported_attributes
+
         self.records: list[DetectionRecord] = []
         self.target_candidates: list[SearchCandidate] = []
         self.related_records: list[DetectionRecord] = []
 
     def _is_target(self, record: DetectionRecord) -> bool:
-        if not self.target_object:
+        if not self.target_classes:
             return False
-        return self.target_object in _normalize(record.object_class)
+        normalized_class = _normalize(record.object_class)
+        return any(tc in normalized_class or normalized_class in tc for tc in self.target_classes)
 
     def _is_related(self, record: DetectionRecord) -> bool:
-        if not self.related_object:
+        if not self.related_classes:
             return False
-        return self.related_object in _normalize(record.object_class)
+        normalized_class = _normalize(record.object_class)
+        return any(rc in normalized_class or normalized_class in rc for rc in self.related_classes)
 
     def _save_crop(self, frame, record: DetectionRecord) -> str | None:
         import cv2
@@ -151,7 +177,7 @@ class VisualSearchEngine:
         if not self.target_candidates:
             return None, None, None
 
-        if self.relation != "near" or not self.related_object:
+        if self.relation != "near" or not self.related_classes:
             best_candidate = max(
                 self.target_candidates,
                 key=lambda candidate: candidate.record.confidence,
@@ -219,18 +245,30 @@ class VisualSearchEngine:
             if candidate.crop_filename
         ]
 
+        # Populate notes from unsupported_attributes
+        notes: list[str] = []
+        if self.unsupported_attributes:
+            notes.append(
+                "Note: the following attributes could not be visually verified: "
+                + ", ".join(self.unsupported_attributes)
+            )
+
+        target_class_str = self.target_classes[0] if self.target_classes else None
+        related_class_str = self.related_classes[0] if self.related_classes else None
+
         if best_candidate is None:
             return SearchResult(
                 found=False,
                 evidence=SearchEvidence(
                     found=False,
-                    object_class=self.target_object or None,
-                    related_object=self.related_object or None,
+                    object_class=target_class_str,
+                    related_object=related_class_str,
                     relation=self.relation or None,
                     frames_seen=len(self.target_candidates),
                 ),
                 images=image_payload,
                 candidate_count=len(self.target_candidates),
+                notes=notes,
             )
 
         track_records = [
@@ -254,7 +292,7 @@ class VisualSearchEngine:
             best_frame=best_record.frame_no,
             confidence=round(best_record.confidence, 4),
             bbox=_bbox_from_record(best_record),
-            related_object=self.related_object or None,
+            related_object=related_class_str,
             related_track_id=related_track_id,
             relation=self.relation or None,
             match_score=round(relation_score, 4) if relation_score is not None else round(best_record.confidence, 4),
@@ -266,6 +304,7 @@ class VisualSearchEngine:
             evidence=evidence,
             images=image_payload,
             candidate_count=len(self.target_candidates),
+            notes=notes,
         )
 
 

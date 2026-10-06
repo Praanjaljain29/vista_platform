@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VISTA — Debug</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-2: #161b27;
+    --panel: #1e2535;
+    --accent: #4f9eff;
+    --text: #e0e6f0;
+    --muted: #7a8ba8;
+    --danger: #e05c5c;
+    --success: #4fc98e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 2rem; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; }
+  h2 { color: var(--accent); margin: 1.5rem 0 0.5rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  a { color: var(--accent); }
+  .back { display: inline-block; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .card { background: var(--panel); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+  .kv { display: grid; grid-template-columns: 180px 1fr; gap: 0.3rem 1rem; font-size: 0.9rem; }
+  .kv dt { color: var(--muted); }
+  .kv dd { word-break: break-all; }
+  pre.json { background: var(--bg-2); border-radius: 6px; padding: 1rem; font-size: 0.82rem; overflow-x: auto; white-space: pre-wrap; color: var(--text); }
+  .notice { color: var(--muted); font-style: italic; }
+  .images-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; }
+  .images-grid figure { background: var(--bg-2); border-radius: 6px; padding: 0.5rem; max-width: 220px; }
+  .images-grid img { max-width: 100%; border-radius: 4px; }
+  .images-grid figcaption { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
+  .pill { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75rem; background: var(--bg-2); color: var(--accent); margin-right: 0.3rem; }
+  .pill-ok { background: #1a3d2b; color: var(--success); }
+  .pill-err { background: #3d1a1a; color: var(--danger); }
+</style>
+</head>
+<body>
+
+<a class="back" href="/">← Back to VISTA</a>
+<h1>VISTA — Debug / Analytics</h1>
+
+{% if result is none %}
+  <p class="notice">No results yet — submit a query on the main page first.</p>
+{% else %}
+
+<!-- Runtime Status -->
+<h2>LLM Runtime</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Mode</dt><dd>{{ runtime_status.get('mode', '—') }}</dd>
+    <dt>Available</dt><dd>{{ runtime_status.get('available', '—') }}</dd>
+    <dt>Message</dt><dd>{{ runtime_status.get('message', '—') }}</dd>
+  </dl>
+</div>
+
+<!-- Answer -->
+<h2>Answer</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Message</dt><dd>{{ result.get('assistant_message', '—') }}</dd>
+    <dt>Mode</dt><dd>{{ result.get('assistant_mode', '—') }}</dd>
+    <dt>OK</dt><dd>{{ result.get('assistant_ok', '—') }}</dd>
+    <dt>Error</dt><dd>{{ result.get('assistant_error') or '—' }}</dd>
+  </dl>
+</div>
+
+<!-- Processing Stats -->
+<h2>Processing Stats</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Frames processed</dt><dd>{{ result.get('frames_processed', '—') }}</dd>
+    <dt>Detections</dt><dd>{{ result.get('detections', '—') }}</dd>
+    <dt>Unique classes</dt><dd>{{ result.get('unique_classes', '—') }}</dd>
+    <dt>Time (minutes)</dt><dd>{{ result.get('time_minutes', '—') }}</dd>
+  </dl>
+</div>
+
+<!-- Parsed Query Intent -->
+<h2>Parsed Query Intent</h2>
+<div class="card">
+  <pre class="json">{{ result.get('intent', {}) | tojson(indent=2) }}</pre>
+</div>
+
+<!-- Parser Status -->
+<h2>Parser Status</h2>
+<div class="card">
+  <pre class="json">{{ result.get('parse_result', {}) | tojson(indent=2) }}</pre>
+</div>
+
+<!-- Evidence Summary -->
+{% set sr = result.get('search_result', {}) %}
+{% set ev = sr.get('evidence', {}) %}
+<h2>Evidence Summary</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Found</dt><dd>{{ ev.get('found', '—') }}</dd>
+    <dt>Object class</dt><dd>{{ ev.get('object_class') or '—' }}</dd>
+    <dt>Track ID</dt><dd>{{ ev.get('track_id') if ev.get('track_id') is not none else '—' }}</dd>
+    <dt>First timestamp</dt><dd>{{ ev.get('first_timestamp') if ev.get('first_timestamp') is not none else '—' }}</dd>
+    <dt>Last timestamp</dt><dd>{{ ev.get('last_timestamp') if ev.get('last_timestamp') is not none else '—' }}</dd>
+    <dt>Best frame</dt><dd>{{ ev.get('best_frame') if ev.get('best_frame') is not none else '—' }}</dd>
+    <dt>Confidence</dt><dd>{{ ev.get('confidence') if ev.get('confidence') is not none else '—' }}</dd>
+    <dt>BBox</dt><dd>{{ ev.get('bbox') or '—' }}</dd>
+    <dt>Related object</dt><dd>{{ ev.get('related_object') or '—' }}</dd>
+    <dt>Related track ID</dt><dd>{{ ev.get('related_track_id') if ev.get('related_track_id') is not none else '—' }}</dd>
+    <dt>Relation</dt><dd>{{ ev.get('relation') or '—' }}</dd>
+    <dt>Match score</dt><dd>{{ ev.get('match_score') if ev.get('match_score') is not none else '—' }}</dd>
+    <dt>Frames seen</dt><dd>{{ ev.get('frames_seen', 0) }}</dd>
+  </dl>
+</div>
+
+<!-- Candidate count + Notes -->
+<h2>Search Summary</h2>
+<div class="card">
+  <dl class="kv">
+    <dt>Candidate count</dt><dd>{{ sr.get('candidate_count', 0) }}</dd>
+  </dl>
+  {% if sr.get('notes') %}
+  <ul style="margin-top:0.75rem; padding-left:1.2rem; font-size:0.9rem; color:var(--muted);">
+    {% for note in sr['notes'] %}<li>{{ note }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<!-- Full search result JSON -->
+<h2>Structured Evidence (Full JSON)</h2>
+<div class="card">
+  <pre class="json">{{ sr | tojson(indent=2) }}</pre>
+</div>
+
+<!-- Visual Crops -->
+{% if result.get('images') %}
+<h2>Visual Crops</h2>
+<div class="card">
+  <div class="images-grid">
+    {% for img in result['images'] %}
+    <figure>
+      <img src="{{ url_for('result_file', filename=img.filename) }}" alt="{{ img.class_name }}">
+      <figcaption>
+        Class: {{ img.class_name }}<br>
+        Track ID: {{ img.track_id }}<br>
+        Frame: {{ img.frame_no }}<br>
+        Confidence: {{ img.confidence }}
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- CSV Downloads -->
+<h2>CSV Downloads</h2>
+<div class="card">
+  {% if result.get('detections_csv') %}
+  <p><a href="{{ url_for('download_file', filename=result['detections_csv']) }}">Download detections CSV</a></p>
+  {% endif %}
+  {% if result.get('classes_csv') %}
+  <p style="margin-top:0.4rem;"><a href="{{ url_for('download_file', filename=result['classes_csv']) }}">Download classes CSV</a></p>
+  {% endif %}
+  {% if not result.get('detections_csv') and not result.get('classes_csv') %}
+  <p class="notice">No CSV files available.</p>
+  {% endif %}
+</div>
+
+<!-- LLM Raw Parser Output -->
+{% if result.get('parse_result', {}).get('raw_output') %}
+<h2>LLM Raw Parser Output</h2>
+<div class="card">
+  <pre class="json">{{ result['parse_result']['raw_output'] }}</pre>
+</div>
+{% endif %}
+
+{% endif %}
+</body>
+</html>

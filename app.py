@@ -3,15 +3,13 @@ from __future__ import annotations
 import csv
 import os
 import time
-from dataclasses import asdict
 
 import cv2
 from flask import Flask, render_template, request, send_from_directory
 from ultralytics import YOLO
 from werkzeug.utils import secure_filename
 
-from llama_service import model_status
-from query_parser import parse_query
+from query_parser import parse_query, _intent_to_dict
 from response_service import generate_response
 from search_service import (
     DetectionRecord,
@@ -46,6 +44,9 @@ CONFIDENCE = 0.35
 
 print("Loading YOLO26 model...")
 model = YOLO(MODEL_PATH)
+
+# Module-level store for the most recent debug result.
+_last_debug_result: dict | None = None
 
 
 def allowed_file(filename: str) -> bool:
@@ -92,12 +93,17 @@ def process_video(video_path: str, query: str, job_id: str) -> dict[str, object]
 
     parse_result = parse_query(query)
     intent = parse_result.intent
+
+    # Determine available YOLO classes from model and pass to search engine.
+    available_classes = set(model.names.values())
     search_engine = None
 
     if parse_result.source != "missing" and (
-        intent.target_object or intent.related_object or intent.action
+        intent.target.type
+        or intent.related_entities
+        or intent.action
     ):
-        search_engine = VisualSearchEngine(intent, job_id, RESULT_DIR)
+        search_engine = VisualSearchEngine(intent, job_id, RESULT_DIR, available_classes=available_classes)
 
     classes_seen: dict[int, str] = {}
     frame_no = 0
@@ -217,6 +223,7 @@ def process_video(video_path: str, query: str, job_id: str) -> dict[str, object]
     elapsed = time.time() - start_time
     conversation = _result_conversation(query, response_result.text)
 
+    from llama_service import model_status
     return {
         "frames_processed": frame_no,
         "detections": serial_no - 1,
@@ -225,7 +232,7 @@ def process_video(video_path: str, query: str, job_id: str) -> dict[str, object]
         "images": search_result.images,
         "detections_csv": os.path.basename(detections_csv),
         "classes_csv": os.path.basename(classes_csv),
-        "intent": asdict(intent),
+        "intent": _intent_to_dict(intent),
         "parse_result": {
             "ok": parse_result.ok,
             "source": parse_result.source,
@@ -246,36 +253,46 @@ def process_video(video_path: str, query: str, job_id: str) -> dict[str, object]
 @app.route("/", methods=["GET"])
 def index():
     return render_home(
-        result=None,
-        error=None,
+        answer_text=None,
+        answer_ok=False,
+        matched_image=None,
         query="",
+        error=None,
     )
 
 
 @app.route("/process", methods=["POST"])
 def process():
+    global _last_debug_result
+
     video_file = request.files.get("video")
     query = request.form.get("query", "").strip()
 
     if not video_file or video_file.filename == "":
         return render_home(
-            result=None,
-            error="Please choose a video.",
+            answer_text=None,
+            answer_ok=False,
+            matched_image=None,
             query=query,
+            error="Please choose a video.",
         )
 
     if not allowed_file(video_file.filename):
         return render_home(
-            result=None,
-            error="Please upload an MP4, AVI, MOV, MKV, or WEBM video.",
+            answer_text=None,
+            answer_ok=False,
+            matched_image=None,
             query=query,
+            error="Please upload an MP4, AVI, MOV, MKV, or WEBM video.",
         )
 
     if not query:
         return render_home(
-            result=None,
-            error="Enter a natural-language query such as: Find the person near the car.",
+            answer_text=None,
+            answer_ok=False,
+            matched_image=None,
             query=query,
+            error="Enter a natural-language query such as: Find the person near the car.",
         )
 
     filename = secure_filename(video_file.filename)
@@ -285,16 +302,21 @@ def process():
 
     try:
         result = process_video(video_path, query, job_id)
+        _last_debug_result = result
         return render_home(
-            result=result,
-            error=None,
+            answer_text=result.get("assistant_message", ""),
+            answer_ok=result.get("assistant_ok", False),
+            matched_image=result["images"][0] if result.get("images") else None,
             query=query,
+            error=None,
         )
     except Exception as exc:
         return render_home(
-            result=None,
-            error=str(exc),
+            answer_text=None,
+            answer_ok=False,
+            matched_image=None,
             query=query,
+            error=str(exc),
         )
 
 
@@ -308,14 +330,30 @@ def download_file(filename: str):
     return send_from_directory(RESULT_DIR, filename, as_attachment=True)
 
 
-def render_home(result: dict[str, object] | None, error: str | None, query: str):
-    runtime_status = model_status()
+@app.route("/debug", methods=["GET"])
+def debug_page():
+    from llama_service import model_status as _model_status
+    return render_template(
+        "debug.html",
+        result=_last_debug_result,
+        runtime_status=_model_status(),
+    )
+
+
+def render_home(
+    answer_text: str | None,
+    answer_ok: bool,
+    matched_image: dict | None,
+    query: str,
+    error: str | None,
+):
     return render_template(
         "index.html",
-        result=result,
-        error=error,
+        answer_text=answer_text,
+        answer_ok=answer_ok,
+        matched_image=matched_image,
         query=query,
-        runtime_status=runtime_status,
+        error=error,
     )
 
 

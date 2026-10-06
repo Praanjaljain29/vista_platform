@@ -19,17 +19,17 @@ class ResponseResult:
 
 def _build_response_prompt(query: str, parse_result: ParseResult, search_result: SearchResult) -> str:
     evidence = summarize_search_result(search_result)
+    intent = parse_result.intent
+
     payload = {
         "query": query,
         "intent": {
-            "target_object": parse_result.intent.target_object,
-            "attributes": parse_result.intent.attributes,
-            "related_object": parse_result.intent.related_object,
-            "relation": parse_result.intent.relation,
-            "action": parse_result.intent.action,
-            "motion": parse_result.intent.motion,
-            "event": parse_result.intent.event,
-            "time_window_seconds": parse_result.intent.time_window_seconds,
+            "target": intent.target.type,
+            "related_entity": intent.related_entities[0].type if intent.related_entities else None,
+            "relation": intent.relations[0].type if intent.relations else None,
+            "action": intent.action,
+            "temporal_constraint": intent.temporal_constraint,
+            "unsupported_attributes": intent.unsupported_attributes,
         },
         "search_result": evidence,
     }
@@ -41,14 +41,12 @@ def _mock_response(search_result: SearchResult) -> ResponseResult:
     evidence = search_result.evidence
     if search_result.found:
         timestamp = evidence.first_timestamp if evidence.first_timestamp is not None else 0.0
-        track_id = evidence.track_id if evidence.track_id is not None else "unknown"
-        frame_no = evidence.best_frame if evidence.best_frame is not None else "unknown"
         text = (
-            f"[MOCK LLM] Yes, I found {evidence.object_class or 'the target object'} "
-            f"around {timestamp:.1f} seconds. Track ID {track_id}, frame {frame_no}."
+            f"[MOCK] Yes, I found {evidence.object_class or 'the target object'} "
+            f"around {timestamp:.1f} seconds into the video."
         )
     else:
-        text = "[MOCK LLM] No matching object was found in the uploaded video."
+        text = "[MOCK] No matching object was found in the uploaded video."
 
     return ResponseResult(ok=True, text=text, mode="mock")
 
@@ -71,9 +69,13 @@ def generate_response(query: str, parse_result: ParseResult, search_result: Sear
         user_prompt=_build_response_prompt(query, parse_result, search_result),
         system_prompt=(
             "You are VISTA, a concise video-search assistant. "
-            "Use only the provided structured evidence. "
-            "Do not invent track IDs, timestamps, frames, confidence scores, or boxes. "
-            "Give a short answer and mention whether the object was found."
+            "Use ONLY the provided structured evidence. "
+            "Do not invent track IDs, timestamps, frames, confidence scores, or bounding boxes. "
+            "Refer to objects by their class name and time only (e.g. 'around 18 seconds'). "
+            "Do NOT show track IDs or confidence numbers in the answer. "
+            "If unsupported_attributes is non-empty, acknowledge those attributes "
+            "could not be visually verified. "
+            "Give a short, human-friendly answer."
         ),
         max_tokens=192,
         temperature=0.2,

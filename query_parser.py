@@ -50,20 +50,36 @@ ACTION_KEYWORDS = [
 ]
 
 
-@dataclass(slots=True)
-class SearchIntent:
-    target_object: str | None = None
+@dataclass
+class TargetEntity:
+    type: str | None = None
     attributes: list[str] = field(default_factory=list)
-    related_object: str | None = None
-    relation: str | None = None
+    description: str = ""
+
+
+@dataclass
+class RelatedEntity:
+    type: str | None = None
+    attributes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Relation:
+    type: str | None = None
+
+
+@dataclass
+class SearchIntent:
+    target: TargetEntity = field(default_factory=TargetEntity)
+    related_entities: list[RelatedEntity] = field(default_factory=list)
+    relations: list[Relation] = field(default_factory=list)
     action: str | None = None
-    motion: str | None = None
-    event: str | None = None
-    time_window_seconds: float | None = None
-    raw_query: str = ""
+    temporal_constraint: str | None = None
+    original_query: str = ""
+    unsupported_attributes: list[str] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class ParseResult:
     ok: bool
     intent: SearchIntent
@@ -98,51 +114,68 @@ def _find_supported_object(query: str, exclude: str | None = None) -> str | None
 
 def _fallback_intent(query: str) -> SearchIntent:
     normalized = _normalize_text(query)
-    target = _find_supported_object(normalized)
-    related = None
+    target_type = _find_supported_object(normalized)
+    related_type = None
 
-    if target:
-        related = _find_supported_object(normalized, exclude=target)
+    if target_type:
+        related_type = _find_supported_object(normalized, exclude=target_type)
 
-    relation = None
+    relation: str | None = None
     for relation_name, phrases in RELATION_KEYWORDS.items():
         if _pick_first_matching_phrase(normalized, phrases):
             relation = relation_name
             break
 
-    action = None
+    action: str | None = None
     for keyword in ACTION_KEYWORDS:
         if re.search(rf"\b{re.escape(keyword)}\b", normalized):
             action = keyword
             break
 
-    attributes = [
+    attribute_words = [
         word
         for word in normalized.split()
         if word in {"red", "blue", "green", "black", "white", "yellow", "small", "large", "big"}
     ]
 
-    return SearchIntent(
-        target_object=target,
-        attributes=attributes,
-        related_object=related,
-        relation=relation,
+    intent = SearchIntent(
+        target=TargetEntity(
+            type=target_type,
+            attributes=attribute_words,
+            description="",
+        ),
+        related_entities=(
+            [RelatedEntity(type=related_type)] if related_type else []
+        ),
+        relations=(
+            [Relation(type=relation)] if relation else []
+        ),
         action=action,
-        raw_query=query,
+        original_query=query,
+        unsupported_attributes=attribute_words,
     )
+    return intent
 
 
 def _intent_to_dict(intent: SearchIntent) -> dict[str, Any]:
     return {
-        "target_object": intent.target_object,
-        "attributes": intent.attributes,
-        "related_object": intent.related_object,
-        "relation": intent.relation,
+        "target": {
+            "type": intent.target.type,
+            "attributes": intent.target.attributes,
+            "description": intent.target.description,
+        },
+        "related_entities": [
+            {"type": ent.type, "attributes": ent.attributes}
+            for ent in intent.related_entities
+        ],
+        "relations": [
+            {"type": r.type}
+            for r in intent.relations
+        ],
         "action": intent.action,
-        "motion": intent.motion,
-        "event": intent.event,
-        "time_window_seconds": intent.time_window_seconds,
-        "raw_query": intent.raw_query,
+        "temporal_constraint": intent.temporal_constraint,
+        "original_query": intent.original_query,
+        "unsupported_attributes": intent.unsupported_attributes,
     }
 
 
@@ -164,31 +197,59 @@ def _coerce_float(value: Any) -> float | None:
 
 
 def _validate_intent(data: dict[str, Any], raw_query: str) -> SearchIntent:
-    intent = SearchIntent(raw_query=raw_query)
+    intent = SearchIntent(original_query=raw_query)
 
-    if isinstance(data.get("target_object"), str):
-        intent.target_object = data["target_object"].strip().lower() or None
+    # Parse target
+    target_data = data.get("target")
+    if isinstance(target_data, dict):
+        t_type = target_data.get("type")
+        intent.target = TargetEntity(
+            type=str(t_type).strip().lower() if isinstance(t_type, str) and t_type.strip() else None,
+            attributes=_coerce_list(target_data.get("attributes")),
+            description=str(target_data.get("description", "") or ""),
+        )
+    elif isinstance(target_data, str) and target_data.strip():
+        # Graceful fallback: Llama returned a bare string for target
+        intent.target = TargetEntity(type=target_data.strip().lower())
 
-    intent.attributes = _coerce_list(data.get("attributes"))
+    # Parse related_entities
+    related_raw = data.get("related_entities")
+    if isinstance(related_raw, list):
+        for item in related_raw:
+            if isinstance(item, dict):
+                re_type = item.get("type")
+                intent.related_entities.append(
+                    RelatedEntity(
+                        type=str(re_type).strip().lower() if isinstance(re_type, str) and re_type.strip() else None,
+                        attributes=_coerce_list(item.get("attributes")),
+                    )
+                )
 
-    if isinstance(data.get("related_object"), str):
-        intent.related_object = data["related_object"].strip().lower() or None
+    # Parse relations
+    relations_raw = data.get("relations")
+    if isinstance(relations_raw, list):
+        for item in relations_raw:
+            if isinstance(item, dict):
+                r_type = item.get("type")
+                intent.relations.append(
+                    Relation(
+                        type=str(r_type).strip().lower() if isinstance(r_type, str) and r_type.strip() else None,
+                    )
+                )
 
-    if isinstance(data.get("relation"), str):
-        intent.relation = data["relation"].strip().lower() or None
-
+    # Scalar fields
     if isinstance(data.get("action"), str):
         intent.action = data["action"].strip().lower() or None
 
-    if isinstance(data.get("motion"), str):
-        intent.motion = data["motion"].strip().lower() or None
+    if isinstance(data.get("temporal_constraint"), str):
+        intent.temporal_constraint = data["temporal_constraint"].strip() or None
 
-    if isinstance(data.get("event"), str):
-        intent.event = data["event"].strip().lower() or None
+    intent.unsupported_attributes = _coerce_list(data.get("unsupported_attributes"))
 
-    intent.time_window_seconds = _coerce_float(data.get("time_window_seconds"))
+    if isinstance(data.get("original_query"), str) and data["original_query"].strip():
+        intent.original_query = data["original_query"].strip()
 
-    if not intent.target_object:
+    if not intent.target.type:
         intent = _fallback_intent(raw_query)
 
     return intent
@@ -226,24 +287,34 @@ def _parse_json_output(text: str, raw_query: str) -> tuple[SearchIntent | None, 
 
 def build_parser_prompt(query: str) -> str:
     schema = {
-        "target_object": "person",
-        "attributes": [],
-        "related_object": None,
-        "relation": None,
+        "target": {"type": "person", "attributes": [], "description": ""},
+        "related_entities": [{"type": "car", "attributes": []}],
+        "relations": [{"type": "near"}],
         "action": None,
-        "motion": None,
-        "event": None,
-        "time_window_seconds": None,
+        "temporal_constraint": None,
+        "unsupported_attributes": [],
+        "original_query": query,
     }
-
-    return (
-        "Convert the user's natural-language VISTA query into JSON only. "
-        "Return a single JSON object and nothing else. "
-        "Do not invent detections or evidence. "
+    instructions = (
+        "Convert the user's natural-language VISTA query into JSON only.\n"
+        "Return a single JSON object and nothing else.\n"
+        "Do not invent detections or evidence.\n"
         "Use null when a field is unknown.\n\n"
-        f"Schema: {json.dumps(schema)}\n\n"
+        "YOLO class vocabulary: person, car, truck, bus, bicycle, motorcycle, "
+        "chair, table, cup, bottle, phone, laptop, tv, monitor, dog, cat, "
+        "backpack, bag.\n\n"
+        "Rules:\n"
+        "- Map synonyms to YOLO class names: "
+        "automobile\u2192car, vehicle\u2192car/truck/bus/motorcycle/bicycle, "
+        "two-wheeler\u2192motorcycle/bicycle, pedestrian/human\u2192person.\n"
+        "- If a concept maps to multiple classes, pick the most likely one for target.type.\n"
+        "- Put unverifiable visual attributes (color, clothing, size, activity) "
+        "in unsupported_attributes.\n"
+        "- Return ONLY valid JSON matching the schema below.\n\n"
+        f"Schema example: {json.dumps(schema)}\n\n"
         f"User query: {query}"
     )
+    return instructions
 
 
 def parse_query(query: str) -> ParseResult:
@@ -251,7 +322,7 @@ def parse_query(query: str) -> ParseResult:
     if not cleaned_query:
         return ParseResult(
             ok=False,
-            intent=SearchIntent(raw_query=query),
+            intent=SearchIntent(original_query=query),
             source="empty",
             error="Query is empty.",
         )
@@ -269,7 +340,7 @@ def parse_query(query: str) -> ParseResult:
     if not status["available"]:
         return ParseResult(
             ok=False,
-            intent=SearchIntent(raw_query=cleaned_query),
+            intent=SearchIntent(original_query=cleaned_query),
             source="missing",
             error=str(status["message"]),
         )
