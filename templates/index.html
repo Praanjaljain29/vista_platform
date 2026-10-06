@@ -158,9 +158,57 @@
             cursor: pointer;
             box-shadow: 0 14px 30px rgba(59, 167, 255, 0.18);
             transition: opacity 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
 
         button[type="submit"]:hover { opacity: 0.88; }
+
+        button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Spinning ring inside the button */
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(4, 17, 27, 0.3);
+            border-top-color: #04111b;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Processing banner shown while the server is working */
+        .processing-banner {
+            display: none;
+            align-items: center;
+            gap: 14px;
+            margin-top: 18px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            background: rgba(97, 217, 197, 0.08);
+            border: 1px solid rgba(97, 217, 197, 0.22);
+            color: var(--accent);
+            font-size: 14px;
+        }
+
+        .processing-banner .banner-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(97, 217, 197, 0.25);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
 
         .error {
             margin-top: 16px;
@@ -187,6 +235,25 @@
             line-height: 1.65;
             color: var(--text);
             white-space: pre-wrap;
+        }
+
+        .time-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 16px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(97, 217, 197, 0.10);
+            border: 1px solid rgba(97, 217, 197, 0.25);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .time-pill svg {
+            flex-shrink: 0;
+            opacity: 0.8;
         }
 
         /* ── Matched frame ── */
@@ -237,7 +304,7 @@
 
     <!-- ② Form -->
     <div class="form-card">
-        <form action="/process" method="post" enctype="multipart/form-data">
+        <form id="search-form" action="/process" method="post" enctype="multipart/form-data">
             <label for="video">Video file</label>
             <input id="video" type="file" name="video" accept="video/*" required>
 
@@ -245,7 +312,16 @@
             <textarea id="query" name="query" placeholder="Find the person near the car." required>{{ query | default('') }}</textarea>
 
             <div class="button-row">
-                <button type="submit">Search</button>
+                <button id="submit-btn" type="submit">
+                    <span class="spinner" id="btn-spinner"></span>
+                    <span id="btn-label">Search</span>
+                </button>
+            </div>
+
+            <!-- Shown while the server processes the video -->
+            <div class="processing-banner" id="processing-banner">
+                <div class="banner-spinner"></div>
+                <span>Analysing video — this may take a moment…</span>
             </div>
 
             {% if error %}
@@ -259,6 +335,19 @@
         <div class="answer-card">
             <div class="answer-label">VISTA says</div>
             <p class="answer-text">{{ answer_text }}</p>
+
+            {% if first_timestamp is not none %}
+                <div class="time-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    {% if last_timestamp is not none and last_timestamp != first_timestamp %}
+                        First seen at {{ "%.1f"|format(first_timestamp) }}s &nbsp;·&nbsp; Last seen at {{ "%.1f"|format(last_timestamp) }}s
+                    {% else %}
+                        Found at {{ "%.1f"|format(first_timestamp) }}s into the video
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
     {% endif %}
 
@@ -275,5 +364,25 @@
     </footer>
 
 </div>
+
+<script>
+    document.getElementById('search-form').addEventListener('submit', function () {
+        const btn     = document.getElementById('submit-btn');
+        const spinner = document.getElementById('btn-spinner');
+        const label   = document.getElementById('btn-label');
+        const banner  = document.getElementById('processing-banner');
+
+        // Disable button and show inline spinner
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        label.textContent = 'Processing…';
+
+        // Show the banner below the button
+        banner.style.display = 'flex';
+
+        // Scroll banner into view smoothly
+        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+</script>
 </body>
 </html>

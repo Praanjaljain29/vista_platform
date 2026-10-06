@@ -303,12 +303,15 @@ def process():
     try:
         result = process_video(video_path, query, job_id)
         _last_debug_result = result
+        evidence = result.get("search_result", {}).get("evidence", {})
         return render_home(
             answer_text=result.get("assistant_message", ""),
             answer_ok=result.get("assistant_ok", False),
             matched_image=result["images"][0] if result.get("images") else None,
             query=query,
             error=None,
+            first_timestamp=evidence.get("first_timestamp"),
+            last_timestamp=evidence.get("last_timestamp"),
         )
     except Exception as exc:
         return render_home(
@@ -346,6 +349,8 @@ def render_home(
     matched_image: dict | None,
     query: str,
     error: str | None,
+    first_timestamp: float | None = None,
+    last_timestamp: float | None = None,
 ):
     return render_template(
         "index.html",
@@ -354,6 +359,8 @@ def render_home(
         matched_image=matched_image,
         query=query,
         error=error,
+        first_timestamp=first_timestamp,
+        last_timestamp=last_timestamp,
     )
 
 
