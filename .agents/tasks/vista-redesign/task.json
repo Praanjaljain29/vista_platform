@@ -1,7 +1,7 @@
 {
   "task_id": "task-vista-redesign",
   "task_description": "Redesign the VISTA Flask app: richer semantic query parsing with a new nested SearchIntent schema, a SemanticClassMapper for synonym resolution, slim main UI (answer + matched frame only), and a full /debug page with all technical detail.",
-  "status": "pending",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
   "blocked_reason": null
 }
